@@ -75,7 +75,7 @@ class fit(object):
     """
 
     def __init__(self, galaxy, fit_instructions, run=".", time_calls=False,
-                 n_posterior=500):
+                 n_posterior=1500):
 
         self.run = run
         self.galaxy = galaxy
@@ -236,6 +236,7 @@ class fit(object):
                 self.results["lnz"] = n_sampler.log_z
                 self.results["lnz_err"] = 1.0 / np.sqrt(n_sampler.n_eff)
 
+            print(samples2d)
             self.results["median"] = np.median(samples2d, axis=0)
             self.results["conf_int"] = np.percentile(self.results["samples2d"],
                                                      (16, 84), axis=0)

@@ -99,7 +99,7 @@ class fit_catalogue(object):
                  photometry_exists=True, make_plots=False, cat_filt_list=None,
                  vary_filt_list=False, redshifts=None, redshift_sigma=0.,
                  run=".", analysis_function=None, time_calls=False,
-                 n_posterior=500, full_catalogue=False, load_indices=None,
+                 n_posterior=np.nan, full_catalogue=False, load_indices=None,
                  index_list=None, track_backlog=False, spec_units="ergscma",
                  phot_units="mujy"):
 
