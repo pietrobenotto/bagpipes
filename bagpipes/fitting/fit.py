@@ -103,6 +103,8 @@ class fit(object):
             fit_info_str = fit_info_str.replace("array", "np.array")
             fit_info_str = fit_info_str.replace("float", "np.float")
             fit_info_str = fit_info_str.replace("np.np.", "np.")
+            fit_info_str = fit_info_str.replace("<Quantity", "")
+            fit_info_str = fit_info_str.replace(">", "")
             self.fit_instructions = eval(fit_info_str)
 
             for k in file.keys():
