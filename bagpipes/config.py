@@ -27,7 +27,7 @@ else:
 
 # Sets the R = lambda/dlambda value for spectroscopic outputs.
 if BPASS:
-    R_spec = 600.
+    R_spec = 10000.
 else:
     R_spec = 1000.
 
