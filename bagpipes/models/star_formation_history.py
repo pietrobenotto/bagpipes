@@ -144,10 +144,13 @@ class star_formation_history:
         # cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
         # self.tform_percentile = self.ages[np.argmin(np.abs(cum_sfh - (100 - perc)/100.))]  # In years
 
-        cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
-        self.age_50_mass = self.ages[np.argmin(np.abs(cum_sfh - 0.5))]
+        #cum_sum lo devo calcolare sugli age_bins
+        cum_sfh = np.append([0],np.cumsum(self.sfh*self.age_widths))
+        cum_sfh/=cum_sfh[-1]
+        self.age_50_mass = np.interp(0.5,cum_sfh,self.age_lhs)
 
-        self.luminosity_weighted_age = -9 #debug
+        self.luminosity_weighted_age = np.sum(self.live_frac_grid*self.ceh.grid*config.luminosity_weights*config.age_sampling)
+        self.luminosity_weighted_age /= np.sum(self.live_frac_grid*self.ceh.grid*config.luminosity_weights)
 
         self.mass_weighted_zmet = np.sum(self.live_frac_grid*self.ceh.grid,
                                          axis=1)

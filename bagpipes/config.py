@@ -94,6 +94,22 @@ try:
 except IOError:
     print("Failed to load stellar grids, these should be placed in"
           + " the bagpipes/models/grids/ directory.")
+    
+
+
+"""Load grid of luminosity weights at 550nm as a function of age and metallicity"""
+try:
+    luminosity_weights_file = "luminosity_grid_550nm.npz"
+    _luminosity_weights = np.load(grid_dir + "/" + luminosity_weights_file)
+    assert np.all(_luminosity_weights["metallicities"] == metallicities)
+    assert np.all(_luminosity_weights["ages"] == age_sampling)
+    luminosity_weights = _luminosity_weights["grid"]
+
+except IOError:
+    print("""Luminosity weights file not found""")
+
+
+
 
 
 """ These variables tell the code where to find the raw nebular emission

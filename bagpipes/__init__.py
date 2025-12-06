@@ -11,6 +11,7 @@ from . import config
 from . import utils
 
 from .models.model_galaxy import model_galaxy
+from .models.star_formation_history import star_formation_history
 from .input.galaxy import galaxy
 from .fitting.fit import fit
 
