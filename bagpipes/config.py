@@ -24,7 +24,7 @@ max_redshift = 10.
 R_spec = 1000.
 
 # Sets the R = lambda/dlambda value for photometric outputs.
-R_phot = 100.
+R_phot = 100.#Mettendo 1000 rallenta un botto. NON FARLO.
 
 # Sets the R = lambda/dlambda value for other spectral regions.
 R_other = 20.

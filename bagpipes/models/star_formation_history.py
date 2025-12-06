@@ -48,7 +48,7 @@ class star_formation_history:
 
     def __init__(self, model_components, log_sampling=0.0025):
 
-        self.hubble_time = utils.age_at_z[utils.z_array == 0.]
+        self.hubble_time = utils.age_at_z[utils.z_array == 0.][0]
 
         # Set up the age sampling for internal SFH calculations.
         log_age_max = np.log10(self.hubble_time)+9. + 2*log_sampling
@@ -144,6 +144,11 @@ class star_formation_history:
         # cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
         # self.tform_percentile = self.ages[np.argmin(np.abs(cum_sfh - (100 - perc)/100.))]  # In years
 
+        cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
+        self.age_50_mass = self.ages[np.argmin(np.abs(cum_sfh - 0.5))]
+
+        self.luminosity_weighted_age = -9 #debug
+
         self.mass_weighted_zmet = np.sum(self.live_frac_grid*self.ceh.grid,
                                          axis=1)
         self.mass_weighted_zmet /= np.sum(self.live_frac_grid*self.ceh.grid)
@@ -154,6 +159,7 @@ class star_formation_history:
 
         self.tform *= 10**-9
         self.mass_weighted_age *= 10**-9
+        self.age_50_mass *= 10**-9
 
         mass_assembly = np.cumsum(self.sfh[::-1]*self.age_widths[::-1])[::-1]
         tunivs = self.age_of_universe - self.ages
@@ -247,6 +253,15 @@ class star_formation_history:
         t = age - self.ages[self.ages < age]
 
         sfr[self.ages < age] = t*np.exp(-t/tau)
+
+    def delayedQuadratic(self, sfr, param):
+
+        age = param["age"]*10**9
+        tau = param["tau"]*10**9
+
+        t = age - self.ages[self.ages < age]
+
+        sfr[self.ages < age] = t**2*np.exp(-t/tau)
 
     def const_exp(self, sfr, param):
 

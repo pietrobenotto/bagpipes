@@ -34,17 +34,19 @@ class filter_set(object):
 
         for filt in self.filt_list:
             try:
-                self.filt_dict[filt] = np.loadtxt(filt, usecols=(0, 1))
+                self.filt_dict[filt] = np.loadtxt(filt, usecols=(0, 1),skiprows=2)#DEBUG
 
             except IOError:
                 self.filt_dict[filt] = np.loadtxt(utils.install_dir + "/"
-                                                  + filt, usecols=(0, 1))
+                                                  + filt, usecols=(0, 1),skiprows=2)
 
             while self.filt_dict[filt][0, 1] == 0.:
                 self.filt_dict[filt] = self.filt_dict[filt][1:, :]
 
             while self.filt_dict[filt][-1, 1] == 0.:
                 self.filt_dict[filt] = self.filt_dict[filt][:-1, :]
+
+            self.filt_dict[filt][:,0]*=1.e4 #MICRON TO AMSTRONG
 
     def _calculate_min_max_wavelengths(self):
         """ Finds the min and max wavelength values across all of the
@@ -138,11 +140,21 @@ class filter_set(object):
         flux = np.expand_dims(spectrum*self.widths*self.wavelengths, axis=1)
         flux = np.sum(flux*filters_z, axis=0)
 
+        """import matplotlib.pyplot as plt
+        plt.title(self.filt_list)
+        plt.plot(self.wavelengths,spectrum)
+        plt.xlim(2000,20000)
+        axt = plt.twinx()
+        for i in range(len(self.filt_list)):
+            axt.plot(self.wavelengths,filters_z[:,i])
+        plt.show()"""
+
         # Calculate denominator of expression
         norm = filters_z*np.expand_dims(self.widths*self.wavelengths, axis=1)
         norm = np.sum(norm, axis=0)
 
         photometry = np.squeeze(flux/norm)
+        photometry = np.array(photometry,ndmin=1)
 
         # This is a little dodgy as pointed out by Ivo, it should depend
         # on the spectral shape however only currently used for UVJ mags

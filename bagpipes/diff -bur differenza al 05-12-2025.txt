@@ -1,0 +1,457 @@
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/config.py	2025-12-05 17:01:39.604392303 +0100
++++ ./config.py	2025-12-05 10:07:03.506000528 +0100
+@@ -24,7 +24,7 @@
+ R_spec = 1000.
+ 
+ # Sets the R = lambda/dlambda value for photometric outputs.
+-R_phot = 100.
++R_phot = 1000.
+ 
+ # Sets the R = lambda/dlambda value for other spectral regions.
+ R_other = 20.
+
+ 
+@@ -99,11 +99,14 @@
+ """ These variables tell the code where to find the raw nebular emission
+ models, as well as some of their basic properties. """
+ 
+-try:
+-    # Names of files containing the nebular grids.
+-    neb_cont_file = "bc03_miles_nebular_cont_grids_extended_logU_nograins_cloudy25.fits"
+-    neb_line_file = "bc03_miles_nebular_line_grids_extended_logU_nograins_cloudy25.fits"
++# LogU values for the nebular emission grids.
++logU = np.arange(-4., 0.01, 0.5)
++
++# Names of files containing the nebular grids.
++neb_cont_file = "bc03_miles_nebular_cont_grids_extended_logU_nograins_cloudy25.fits"
++neb_line_file = "bc03_miles_nebular_line_grids_extended_logU_nograins_cloudy25.fits"
+ 
++try:
+     # Names for the emission features to be tracked.
+     line_names = np.loadtxt(grid_dir + "/cloudy_lines.txt",
+                             dtype="str", delimiter="}")
+@@ -118,15 +121,14 @@
+     # Wavelengths for the nebular continuum grids.
+     neb_wavs = fits.open(grid_dir + "/" + neb_cont_file)[1].data[0, 1:]
+ 
+-    # LogU values for the nebular emission grids.
+-    logU = np.arange(-4., 0.01, 0.5)
+-
+     # Grid of line fluxes.
+-    line_grid = [fits.open(grid_dir + "/" + neb_line_file)[i].data for
++    line_file = fits.open(grid_dir + "/" + neb_line_file)
++    line_grid = [line_file[i].data for
+                  i in range(len(metallicities) * len(logU) + 1)]
+ 
+     # Grid of nebular continuum fluxes.
+-    cont_grid = [fits.open(grid_dir + "/" + neb_cont_file)[i].data for
++    cont_file = fits.open(grid_dir + "/" + neb_cont_file)
++    cont_grid = [cont_file[i].data for
+                  i in range(len(metallicities) * len(logU) + 1)]
+ 
+ except (IOError, IndexError):
+@@ -148,13 +150,13 @@
+                           2.37, 2.50, 3.19, 3.90, 4.58])
+ 
+     # Draine + Li (2007) dust emission grids, stored as a FITS HDUList.
+-    dust_grid_umin_only = [
+-        fits.open(grid_dir + "/dl07_grids_umin_only_no_norm.fits")[i].data for i
+-        in range(len(qpah_vals) + 1)]
+-
+-    dust_grid_umin_umax = [
+-        fits.open(grid_dir + "/dl07_grids_umin_umax_no_norm.fits")[i].data for i
+-        in range(len(qpah_vals) + 1)]
++    file_umin_only = fits.open(grid_dir + "/dl07_grids_umin_only_no_norm.fits")
++    dust_grid_umin_only = [file_umin_only[i].data
++                           for i in range(len(qpah_vals) + 1)]
++
++    file_umin_umax = fits.open(grid_dir + "/dl07_grids_umin_umax_no_norm.fits")
++    dust_grid_umin_umax = [file_umin_umax[i].data
++                           for i in range(len(qpah_vals) + 1)]
+ 
+ except IOError:
+     print("Failed to load dust emission grids, these should be placed in the"
+Only in .: diff_log_relative_to_original_23_04_2025.txt
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/filter_set.py ./filters/filter_set.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/filter_set.py	2025-12-05 17:03:38.892895294 +0100
++++ ./filters/filter_set.py	2025-12-05 10:18:23.680361209 +0100
+@@ -34,11 +34,11 @@
+ 
+         for filt in self.filt_list:
+             try:
+-                self.filt_dict[filt] = np.loadtxt(filt, usecols=(0, 1))
++                self.filt_dict[filt] = np.loadtxt(filt, usecols=(0, 1),skiprows=2)#DEBUG
+ 
+             except IOError:
+                 self.filt_dict[filt] = np.loadtxt(utils.install_dir + "/"
+-                                                  + filt, usecols=(0, 1))
++                                                  + filt, usecols=(0, 1),skiprows=2)
+ 
+             while self.filt_dict[filt][0, 1] == 0.:
+                 self.filt_dict[filt] = self.filt_dict[filt][1:, :]
+@@ -46,6 +46,8 @@
+             while self.filt_dict[filt][-1, 1] == 0.:
+                 self.filt_dict[filt] = self.filt_dict[filt][:-1, :]
+ 
++            self.filt_dict[filt][:,0]*=1.e4 #MICRON TO AMSTRONG
++
+     def _calculate_min_max_wavelengths(self):
+         """ Finds the min and max wavelength values across all of the
+         filter curves. """
+@@ -138,11 +140,21 @@
+         flux = np.expand_dims(spectrum*self.widths*self.wavelengths, axis=1)
+         flux = np.sum(flux*filters_z, axis=0)
+ 
++        """import matplotlib.pyplot as plt
++        plt.title(self.filt_list)
++        plt.plot(self.wavelengths,spectrum)
++        plt.xlim(2000,20000)
++        axt = plt.twinx()
++        for i in range(len(self.filt_list)):
++            axt.plot(self.wavelengths,filters_z[:,i])
++        plt.show()"""
++
+         # Calculate denominator of expression
+         norm = filters_z*np.expand_dims(self.widths*self.wavelengths, axis=1)
+         norm = np.sum(norm, axis=0)
+ 
+         photometry = np.squeeze(flux/norm)
++        photometry = np.array(photometry,ndmin=1)
+ 
+         # This is a little dodgy as pointed out by Ivo, it should depend
+         # on the spectral shape however only currently used for UVJ mags
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/__pycache__/filter_set.cpython-312.pyc and ./filters/__pycache__/filter_set.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/__pycache__/__init__.cpython-312.pyc and ./filters/__pycache__/__init__.cpython-312.pyc differ
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ/Generic-Bessell.U.dat ./filters/UVJ/Generic-Bessell.U.dat
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ/Generic-Bessell.U.dat	2025-12-05 17:01:39.604392303 +0100
++++ ./filters/UVJ/Generic-Bessell.U.dat	2025-12-05 09:42:43.507567147 +0100
+@@ -1,25 +1,29 @@
+-3000.0 0.0000000000
+-3050.0 0.0160000000
+-3100.0 0.0680000000
+-3150.0 0.1670000000
+-3200.0 0.2870000000
+-3250.0 0.4230000000
+-3300.0 0.5600000000
+-3350.0 0.6730000000
+-3400.0 0.7720000000
+-3450.0 0.8410000000
+-3500.0 0.9050000000
+-3550.0 0.9430000000
+-3600.0 0.9810000000
+-3650.0 0.9930000000
+-3700.0 1.0000000000
+-3750.0 0.9890000000
+-3800.0 0.9160000000
+-3850.0 0.8040000000
+-3900.0 0.6250000000
+-3950.0 0.4230000000
+-4000.0 0.2380000000
+-4050.0 0.1140000000
+-4100.0 0.0510000000
+-4150.0 0.0190000000
+-4200.0 0.0000000000
++# Bessel+1990, according to Williams+2008
++Microns, Transmission
++0.290 0.0000000000
++0.295 0.0000000000
++0.300 0.0000000000
++0.305 0.0160000000
++0.310 0.0680000000
++0.315 0.1670000000
++0.320 0.2870000000
++0.325 0.4230000000
++0.330 0.5600000000
++0.335 0.6730000000
++0.340 0.7720000000
++0.345 0.8410000000
++0.350 0.9050000000
++0.355 0.9430000000
++0.360 0.9810000000
++0.365 0.9930000000
++0.370 1.0000000000
++0.375 0.9890000000
++0.380 0.9160000000
++0.385 0.8040000000
++0.390 0.6250000000
++0.395 0.4230000000
++0.400 0.2380000000
++0.405 0.1140000000
++0.410 0.0510000000
++0.415 0.0190000000
++0.420 0.0000000000
+\ No newline at end of file
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ/Generic-Bessell.V.dat ./filters/UVJ/Generic-Bessell.V.dat
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ/Generic-Bessell.V.dat	2025-12-05 17:01:39.604392303 +0100
++++ ./filters/UVJ/Generic-Bessell.V.dat	2025-12-05 09:43:30.765303761 +0100
+@@ -1,24 +1,28 @@
+-4700.0 0.0000000000
+-4800.0 0.0300000000
+-4900.0 0.1630000000
+-5000.0 0.4580000000
+-5100.0 0.7800000000
+-5200.0 0.9670000000
+-5300.0 1.0000000000
+-5400.0 0.9730000000
+-5500.0 0.8980000000
+-5600.0 0.7920000000
+-5700.0 0.6840000000
+-5800.0 0.5740000000
+-5900.0 0.4610000000
+-6000.0 0.3590000000
+-6100.0 0.2700000000
+-6200.0 0.1970000000
+-6300.0 0.1350000000
+-6400.0 0.0810000000
+-6500.0 0.0450000000
+-6600.0 0.0250000000
+-6700.0 0.0170000000
+-6800.0 0.0130000000
+-6900.0 0.0090000000
+-7000.0 0.0000000000
++# Bessel+1990, according to Williams+2008 #source http://svo2.cab.inta-csic.es/theory/fps/index.php
++Microns, Transmission
++0.460 0.0000000000
++0.465 0.0000000000
++0.470 0.0000000000
++0.480 0.0300000000
++0.490 0.1630000000
++0.500 0.4580000000
++0.510 0.7800000000
++0.520 0.9670000000
++0.530 1.0000000000
++0.540 0.9730000000
++0.550 0.8980000000
++0.560 0.7920000000
++0.570 0.6840000000
++0.580 0.5740000000
++0.590 0.4610000000
++0.600 0.3590000000
++0.610 0.2700000000
++0.620 0.1970000000
++0.630 0.1350000000
++0.640 0.0810000000
++0.650 0.0450000000
++0.660 0.0250000000
++0.670 0.0170000000
++0.680 0.0130000000
++0.690 0.0090000000
++0.700 0.0000000000
+\ No newline at end of file
+Only in ./filters/UVJ: ___Keck-NIRC2.J.dat
+Only in /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ: Keck-NIRC2.J.dat
+Only in ./filters/UVJ: MKO_NSFCam.J.dat
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ.filt_list ./filters/UVJ.filt_list
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/filters/UVJ.filt_list	2025-12-05 17:01:39.604392303 +0100
++++ ./filters/UVJ.filt_list	2025-12-05 10:14:26.134502527 +0100
+@@ -1,3 +1,3 @@
+ filters/UVJ/Generic-Bessell.U.dat
+ filters/UVJ/Generic-Bessell.V.dat
+-filters/UVJ/Keck-NIRC2.J.dat
++filters/UVJ/MKO_NSFCam.J.dat
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/fit.py ./fitting/fit.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/fit.py	2025-12-05 17:01:39.604392303 +0100
++++ ./fitting/fit.py	2025-12-05 16:48:54.373865917 +0100
+@@ -72,8 +72,7 @@
+     # '0.148232-104'  -> 1.482320e-105
+     # '0.148232E-10'  -> 1.482320e-011
+     # '1.148232'      -> 1.48232e+000
+-    convert = lambda s: float(re.sub(r'(\d)([\+\-])(\d)', r'\1E\2\3',
+-                                     s.decode()))
++    convert = lambda s: float(re.sub(r'(\d)([\+\-])(\d)', r'\1E\2\3',s))
+     converters = dict(zip(range(ncolumns), [convert] * ncolumns))
+ 
+     return np.genfromtxt(filename, converters=converters)
+@@ -142,7 +141,7 @@
+             self.fit_instructions = eval(fit_info_str)
+ 
+             for k in file.keys():
+-                self.results[k] = np.array(file[k])
++                self.results[k] = np.asarray(file[k])
+                 if np.sum(self.results[k].shape) == 1:
+                     self.results[k] = self.results[k][0]
+ 
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/posterior.py ./fitting/posterior.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/posterior.py	2025-12-05 17:01:39.604392303 +0100
++++ ./fitting/posterior.py	2025-12-05 12:12:58.335715460 +0100
+@@ -59,7 +59,7 @@
+         self.fitted_model = fitted_model(self.galaxy, self.fit_instructions)
+ 
+         # 2D array of samples for the fitted parameters only.
+-        self.samples2d = np.array(file["samples2d"])
++        self.samples2d = np.asarray(file["samples2d"])
+ 
+         # If fewer than n_samples exist in posterior, reduce n_samples
+         if self.samples2d.shape[0] < self.n_samples:
+@@ -134,7 +134,7 @@
+         self.sfh = star_formation_history(self.fitted_model.model_components)
+ 
+         quantity_names = ["stellar_mass", "formed_mass", "sfr", "ssfr", "nsfr",
+-                          "mass_weighted_age", "tform", "tquench",
++                          "mass_weighted_age","age_50_mass","luminosity_weighted_age", "tform", "tquench",
+                           "mass_weighted_zmet"]
+ 
+         for q in quantity_names:
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/calibration.cpython-312.pyc and ./fitting/__pycache__/calibration.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/check_priors.cpython-312.pyc and ./fitting/__pycache__/check_priors.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/fit.cpython-312.pyc and ./fitting/__pycache__/fit.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/fitted_model.cpython-312.pyc and ./fitting/__pycache__/fitted_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/__init__.cpython-312.pyc and ./fitting/__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/noise.cpython-312.pyc and ./fitting/__pycache__/noise.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/posterior.cpython-312.pyc and ./fitting/__pycache__/posterior.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/fitting/__pycache__/prior.cpython-312.pyc and ./fitting/__pycache__/prior.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/input/__pycache__/galaxy.cpython-312.pyc and ./input/__pycache__/galaxy.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/input/__pycache__/__init__.cpython-312.pyc and ./input/__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/input/__pycache__/spectral_indices.cpython-312.pyc and ./input/__pycache__/spectral_indices.cpython-312.pyc differ
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/dust_emission_model.py ./models/dust_emission_model.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/dust_emission_model.py	2025-12-05 17:01:39.604392303 +0100
++++ ./models/dust_emission_model.py	2025-12-05 10:17:24.038805194 +0100
+@@ -55,5 +55,5 @@
+                              config.dust_grid_umin_only[1][:, 0],
+                              model, left=0., right=0.)
+ 
+-        spectrum_norm = spectrum / np.trapz(spectrum, x=self.wavelengths)
++        spectrum_norm = spectrum / np.trapezoid(spectrum, x=self.wavelengths)
+         return spectrum_norm
+Only in ./models/grids: luminosity_grid_550nm.npz
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/making/__pycache__/igm_inoue2014.cpython-312.pyc and ./models/making/__pycache__/igm_inoue2014.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/making/__pycache__/__init__.cpython-312.pyc and ./models/making/__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/making/__pycache__/make_cloudy_models.cpython-312.pyc and ./models/making/__pycache__/make_cloudy_models.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/making/__pycache__/make_draine_li_grids.cpython-312.pyc and ./models/making/__pycache__/make_draine_li_grids.cpython-312.pyc differ
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/model_galaxy.py ./models/model_galaxy.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/model_galaxy.py	2025-12-05 17:01:39.604392303 +0100
++++ ./models/model_galaxy.py	2025-12-05 10:17:32.335018628 +0100
+@@ -176,7 +176,7 @@
+                 self.R = [config.R_other, config.R_spec,
+                           config.R_phot, config.R_other]
+ 
+-            elif (self.spec_wavs[0] > self.filter_set.min_phot_wav
++            if (self.spec_wavs[0] > self.filter_set.min_phot_wav
+                   and self.spec_wavs[-1] > self.filter_set.max_phot_wav):
+ 
+                 self.max_wavs = [self.filter_set.min_phot_wav/(1.+max_z),
+@@ -186,14 +186,6 @@
+                 self.R = [config.R_other, config.R_phot,
+                           config.R_spec, config.R_other]
+ 
+-            elif (self.spec_wavs[0] < self.filter_set.min_phot_wav
+-                  and self.spec_wavs[-1] > self.filter_set.max_phot_wav):
+-
+-                self.max_wavs = [self.spec_wavs[0]/(1.+max_z),
+-                                 self.spec_wavs[-1], 10**8]
+-
+-                self.R = [config.R_other, config.R_spec, config.R_other]
+-
+         # Generate the desired wavelength sampling.
+         x = [1.]
+ 
+@@ -418,7 +410,7 @@
+         if self.dust_atten:
+             trans = 10**(-model_comp["dust"]["Av"]*self.dust_atten.A_cont/2.5)
+             dust_spectrum = spectrum*trans
+-            dust_flux += np.trapz(spectrum - dust_spectrum, x=self.wavelengths)
++            dust_flux += np.trapezoid(spectrum - dust_spectrum, x=self.wavelengths)
+ 
+             spectrum = dust_spectrum
+             self.spectrum_bc = spectrum_bc*trans
+@@ -434,8 +426,15 @@
+             if "gamma" in list(model_comp["dust"]):
+                 gamma = model_comp["dust"]["gamma"]
+ 
+-            spectrum += dust_flux*self.dust_emission.spectrum(qpah, umin,
+-                                                              gamma)
++
++            if "emissionMult" in list(model_comp["dust"]):
++                multiplicator = model_comp["dust"]["emissionMult"]
++            else:
++                multiplicator = 1.0
++
++            spectrum += multiplicator*dust_flux*self.dust_emission.spectrum(qpah, umin,gamma)
++            #spectrum += dust_flux*self.dust_emission.spectrum(qpah, umin,gamma)
++
+ 
+         spectrum *= self.igm.trans(model_comp["redshift"])
+ 
+@@ -523,7 +522,7 @@
+             x_kernel_pix = np.arange(-k_size, k_size+1)
+ 
+             kernel = np.exp(-(x_kernel_pix**2)/(2*sigma_pix**2))
+-            kernel /= np.trapz(kernel)  # Explicitly normalise kernel
++            kernel /= np.trapezoid(kernel)  # Explicitly normalise kernel
+ 
+             spectrum = np.convolve(self.spectrum_full, kernel, mode="valid")
+             redshifted_wavs = zplusone*self.wavelengths[k_size:-k_size]
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/agn_model.cpython-312.pyc and ./models/__pycache__/agn_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/chemical_enrichment_history.cpython-312.pyc and ./models/__pycache__/chemical_enrichment_history.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/dla_model.cpython-312.pyc and ./models/__pycache__/dla_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/dust_attenuation_model.cpython-312.pyc and ./models/__pycache__/dust_attenuation_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/dust_emission_model.cpython-312.pyc and ./models/__pycache__/dust_emission_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/igm_model.cpython-312.pyc and ./models/__pycache__/igm_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/__init__.cpython-312.pyc and ./models/__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/model_galaxy.cpython-312.pyc and ./models/__pycache__/model_galaxy.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/nebular_model.cpython-312.pyc and ./models/__pycache__/nebular_model.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/star_formation_history.cpython-312.pyc and ./models/__pycache__/star_formation_history.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/__pycache__/stellar_model.cpython-312.pyc and ./models/__pycache__/stellar_model.cpython-312.pyc differ
+diff -bur /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/star_formation_history.py ./models/star_formation_history.py
+--- /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/models/star_formation_history.py	2025-12-05 17:01:39.604392303 +0100
++++ ./models/star_formation_history.py	2025-12-05 12:22:00.541385343 +0100
+@@ -48,7 +48,7 @@
+ 
+     def __init__(self, model_components, log_sampling=0.0025):
+ 
+-        self.hubble_time = utils.age_at_z[utils.z_array == 0.]
++        self.hubble_time = utils.age_at_z[utils.z_array == 0.][0]
+ 
+         # Set up the age sampling for internal SFH calculations.
+         log_age_max = np.log10(self.hubble_time)+9. + 2*log_sampling
+@@ -144,6 +144,11 @@
+         # cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
+         # self.tform_percentile = self.ages[np.argmin(np.abs(cum_sfh - (100 - perc)/100.))]  # In years
+ 
++        cum_sfh = np.cumsum(self.sfh*self.age_widths)/np.sum(self.sfh*self.age_widths)
++        self.age_50_mass = self.ages[np.argmin(np.abs(cum_sfh - 0.5))]
++
++        self.luminosity_weighted_age = -9 #debug
++
+         self.mass_weighted_zmet = np.sum(self.live_frac_grid*self.ceh.grid,
+                                          axis=1)
+         self.mass_weighted_zmet /= np.sum(self.live_frac_grid*self.ceh.grid)
+@@ -154,6 +159,7 @@
+ 
+         self.tform *= 10**-9
+         self.mass_weighted_age *= 10**-9
++        self.age_50_mass *= 10**-9
+ 
+         mass_assembly = np.cumsum(self.sfh[::-1]*self.age_widths[::-1])[::-1]
+         tunivs = self.age_of_universe - self.ages
+@@ -248,6 +254,15 @@
+ 
+         sfr[self.ages < age] = t*np.exp(-t/tau)
+ 
++    def delayedQuadratic(self, sfr, param):
++
++        age = param["age"]*10**9
++        tau = param["tau"]*10**9
++
++        t = age - self.ages[self.ages < age]
++
++        sfr[self.ages < age] = t**2*np.exp(-t/tau)
++
+     def const_exp(self, sfr, param):
+ 
+         age = param["age"]*10**9
+Only in .: out.txt
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/general.cpython-312.pyc and ./plotting/__pycache__/general.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/__init__.cpython-312.pyc and ./plotting/__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_1d_posterior.cpython-312.pyc and ./plotting/__pycache__/plot_1d_posterior.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_calibration.cpython-312.pyc and ./plotting/__pycache__/plot_calibration.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_corner.cpython-312.pyc and ./plotting/__pycache__/plot_corner.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_galaxy.cpython-312.pyc and ./plotting/__pycache__/plot_galaxy.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_model_galaxy.cpython-312.pyc and ./plotting/__pycache__/plot_model_galaxy.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_sfh.cpython-312.pyc and ./plotting/__pycache__/plot_sfh.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_sfh_posterior.cpython-312.pyc and ./plotting/__pycache__/plot_sfh_posterior.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_spectrum.cpython-312.pyc and ./plotting/__pycache__/plot_spectrum.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/plotting/__pycache__/plot_spectrum_posterior.cpython-312.pyc and ./plotting/__pycache__/plot_spectrum_posterior.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/__pycache__/config.cpython-312.pyc and ./__pycache__/config.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/__pycache__/__init__.cpython-312.pyc and ./__pycache__/__init__.cpython-312.pyc differ
+Binary files /home/pi31700/miniconda3/envs/test/lib/python3.12/site-packages/bagpipes/__pycache__/utils.cpython-312.pyc and ./__pycache__/utils.cpython-312.pyc differ

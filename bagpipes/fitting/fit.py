@@ -72,8 +72,7 @@ def _read_multinest_data(filename):
     # '0.148232-104'  -> 1.482320e-105
     # '0.148232E-10'  -> 1.482320e-011
     # '1.148232'      -> 1.48232e+000
-    convert = lambda s: float(re.sub(r'(\d)([\+\-])(\d)', r'\1E\2\3',
-                                     s.decode()))
+    convert = lambda s: float(re.sub(r'(\d)([\+\-])(\d)', r'\1E\2\3',s))
     converters = dict(zip(range(ncolumns), [convert] * ncolumns))
 
     return np.genfromtxt(filename, converters=converters)
@@ -142,7 +141,7 @@ class fit(object):
             self.fit_instructions = eval(fit_info_str)
 
             for k in file.keys():
-                self.results[k] = np.array(file[k])
+                self.results[k] = np.asarray(file[k])
                 if np.sum(self.results[k].shape) == 1:
                     self.results[k] = self.results[k][0]
 

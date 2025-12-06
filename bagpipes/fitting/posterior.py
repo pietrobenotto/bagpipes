@@ -59,7 +59,7 @@ class posterior(object):
         self.fitted_model = fitted_model(self.galaxy, self.fit_instructions)
 
         # 2D array of samples for the fitted parameters only.
-        self.samples2d = np.array(file["samples2d"])
+        self.samples2d = np.asarray(file["samples2d"])
 
         # If fewer than n_samples exist in posterior, reduce n_samples
         if self.samples2d.shape[0] < self.n_samples:
@@ -134,7 +134,7 @@ class posterior(object):
         self.sfh = star_formation_history(self.fitted_model.model_components)
 
         quantity_names = ["stellar_mass", "formed_mass", "sfr", "ssfr", "nsfr",
-                          "mass_weighted_age", "tform", "tquench",
+                          "mass_weighted_age","age_50_mass","luminosity_weighted_age", "tform", "tquench",
                           "mass_weighted_zmet"]
 
         for q in quantity_names:

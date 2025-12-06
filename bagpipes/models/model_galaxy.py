@@ -176,7 +176,7 @@ class model_galaxy(object):
                 self.R = [config.R_other, config.R_spec,
                           config.R_phot, config.R_other]
 
-            elif (self.spec_wavs[0] > self.filter_set.min_phot_wav
+            if (self.spec_wavs[0] > self.filter_set.min_phot_wav
                   and self.spec_wavs[-1] > self.filter_set.max_phot_wav):
 
                 self.max_wavs = [self.filter_set.min_phot_wav/(1.+max_z),
@@ -185,14 +185,6 @@ class model_galaxy(object):
 
                 self.R = [config.R_other, config.R_phot,
                           config.R_spec, config.R_other]
-
-            elif (self.spec_wavs[0] < self.filter_set.min_phot_wav
-                  and self.spec_wavs[-1] > self.filter_set.max_phot_wav):
-
-                self.max_wavs = [self.spec_wavs[0]/(1.+max_z),
-                                 self.spec_wavs[-1], 10**8]
-
-                self.R = [config.R_other, config.R_spec, config.R_other]
 
         # Generate the desired wavelength sampling.
         x = [1.]
@@ -418,7 +410,7 @@ class model_galaxy(object):
         if self.dust_atten:
             trans = 10**(-model_comp["dust"]["Av"]*self.dust_atten.A_cont/2.5)
             dust_spectrum = spectrum*trans
-            dust_flux += np.trapz(spectrum - dust_spectrum, x=self.wavelengths)
+            dust_flux += np.trapezoid(spectrum - dust_spectrum, x=self.wavelengths)
 
             spectrum = dust_spectrum
             self.spectrum_bc = spectrum_bc*trans
@@ -434,8 +426,15 @@ class model_galaxy(object):
             if "gamma" in list(model_comp["dust"]):
                 gamma = model_comp["dust"]["gamma"]
 
-            spectrum += dust_flux*self.dust_emission.spectrum(qpah, umin,
-                                                              gamma)
+
+            if "emissionMult" in list(model_comp["dust"]):
+                multiplicator = model_comp["dust"]["emissionMult"]
+            else:
+                multiplicator = 1.0
+
+            spectrum += multiplicator*dust_flux*self.dust_emission.spectrum(qpah, umin,gamma)
+            #spectrum += dust_flux*self.dust_emission.spectrum(qpah, umin,gamma)
+
 
         spectrum *= self.igm.trans(model_comp["redshift"])
 
@@ -523,7 +522,7 @@ class model_galaxy(object):
             x_kernel_pix = np.arange(-k_size, k_size+1)
 
             kernel = np.exp(-(x_kernel_pix**2)/(2*sigma_pix**2))
-            kernel /= np.trapz(kernel)  # Explicitly normalise kernel
+            kernel /= np.trapezoid(kernel)  # Explicitly normalise kernel
 
             spectrum = np.convolve(self.spectrum_full, kernel, mode="valid")
             redshifted_wavs = zplusone*self.wavelengths[k_size:-k_size]
