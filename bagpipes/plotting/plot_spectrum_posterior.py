@@ -23,6 +23,7 @@ def plot_spectrum_posterior(fit, show=False, save=True):
     # First plot the observational data
     fig, ax, y_scale = plot_galaxy(fit.galaxy, show=False, return_y_scale=True)
 
+
     if fit.galaxy.spectrum_exists:
         add_spectrum_posterior(fit, ax[0], zorder=6, y_scale=y_scale[0])
 
@@ -66,8 +67,8 @@ def add_photometry_posterior(fit, ax, zorder=4, y_scale=None, color1=None,
         redshift = fit.fitted_model.model_components["redshift"]
 
     # Plot the posterior photometry and full spectrum.
-    log_wavs = np.log10(fit.posterior.model_galaxy.wavelengths*(1.+redshift))
-    log_eff_wavs = np.log10(fit.galaxy.filter_set.eff_wavs)
+    wavs_at_z = fit.posterior.model_galaxy.wavelengths*(1.+redshift)
+    eff_wavs = fit.galaxy.filter_set.eff_wavs
 
     if background_spectrum:
         spec_post = np.percentile(fit.posterior.samples["spectrum_full"],
@@ -75,13 +76,13 @@ def add_photometry_posterior(fit, ax, zorder=4, y_scale=None, color1=None,
 
         spec_post = spec_post.astype(float)  # fixes weird isfinite error
 
-        ax.plot(log_wavs, spec_post[:, 0], color=color1,
+        ax.plot(wavs_at_z, spec_post[:, 0], color=color1,
                 zorder=zorder-1, label=label)
 
-        ax.plot(log_wavs, spec_post[:, 1], color=color1,
+        ax.plot(wavs_at_z, spec_post[:, 1], color=color1,
                 zorder=zorder-1)
 
-        ax.fill_between(log_wavs, spec_post[:, 0], spec_post[:, 1],
+        ax.fill_between(wavs_at_z, spec_post[:, 0], spec_post[:, 1],
                         zorder=zorder-1, color=color1, linewidth=0)
 
     phot_post = np.percentile(fit.posterior.samples["photometry"],
@@ -95,11 +96,13 @@ def add_photometry_posterior(fit, ax, zorder=4, y_scale=None, color1=None,
         phot_band = fit.posterior.samples["photometry"][:, j]
         mask = (phot_band > phot_post[j, 0]) & (phot_band < phot_post[j, 1])
         phot_1sig = phot_band[mask]*10**-y_scale
-        wav_array = np.zeros(phot_1sig.shape[0]) + log_eff_wavs[j]
+        wav_array = np.zeros(phot_1sig.shape[0]) + eff_wavs[j]
 
         if phot_1sig.min() < ymax*10**-y_scale:
             ax.scatter(wav_array, phot_1sig, color=color2,
                        zorder=zorder, alpha=0.05, s=100, rasterized=True)
+            
+    ax.set_xscale("log")
 
 def add_spectrum_posterior(fit, ax, zorder=4, y_scale=None):
 

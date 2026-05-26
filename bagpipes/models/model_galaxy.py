@@ -96,6 +96,9 @@ class model_galaxy(object):
         self.uvj_filter_set = filters.filter_set(uvj_filt_list)
         self.uvj_filter_set.resample_filter_curves(self.wavelengths)
 
+        self.b_filter_set   = filters.filter_set([utils.install_dir + "/filters/UVJ/Generic_Bessell.B.dat"])
+        self.b_filter_set.resample_filter_curves(self.wavelengths)
+
         # Create relevant physical models.
         self.sfh = star_formation_history(model_components)
         self.stellar = stellar(self.wavelengths)
@@ -290,6 +293,7 @@ class model_galaxy(object):
 
             self.spectrum_full = np.zeros_like(self.wavelengths)
             self.uvj = np.zeros(3)
+            self.Bmag = 0
 
         else:
             self._calculate_full_spectrum(model_components)
@@ -321,6 +325,7 @@ class model_galaxy(object):
 
         if not self.sfh.unphysical:
             self._calculate_uvj_mags()
+            self.Bmag = -2.5*np.log10(self.b_filter_set.get_photometry(self.spectrum_full, 0, unit_conv="cgs_to_mujy"))
 
         # Deal with any spectral index calculations.
         if self.index_list is not None:

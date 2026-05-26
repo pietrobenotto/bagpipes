@@ -76,8 +76,7 @@ def add_observed_photometry(galaxy, ax, x_ticks=None, zorder=4, ptsize=40,
         photometry = photometry[mask, :]
 
     # Sort out axis limits
-    ax.set_xlim((np.log10(galaxy.filter_set.eff_wavs.min()) - 0.025),
-                (np.log10(galaxy.filter_set.eff_wavs.max()) + 0.025))
+    ax.set_xlim(galaxy.filter_set.eff_wavs.min()/1.005,galaxy.filter_set.eff_wavs.max()*1.005)
 
     mask = (photometry[:, 1] > 0.)
     ymax = 1.1*np.nanmax((photometry[:, 1]+photometry[:, 2])[mask])
@@ -88,13 +87,13 @@ def add_observed_photometry(galaxy, ax, x_ticks=None, zorder=4, ptsize=40,
     ax.set_ylim(0., ymax*10**-y_scale)
 
     # Plot the data
-    ax.errorbar(np.log10(photometry[:, 0]),
+    ax.errorbar(photometry[:, 0],
                 photometry[:, 1]*10**-y_scale,
                 yerr=photometry[:, 2]*10**-y_scale, lw=lw,
                 linestyle=" ", capsize=3, capthick=1, zorder=zorder-1,
                 color="black")
 
-    ax.scatter(np.log10(photometry[:, 0]),
+    ax.scatter(photometry[:, 0],
                photometry[:, 1]*10**-y_scale, color=color, s=ptsize,
                zorder=zorder, linewidth=lw, facecolor=color,
                edgecolor="black", label=label, marker=marker)

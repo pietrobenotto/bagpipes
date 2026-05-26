@@ -335,9 +335,9 @@ class fit(object):
     def plot_1d_posterior(self, show=False, save=True):
         return plotting.plot_1d_posterior(self, show=show, save=save)
 
-    def plot_sfh_posterior(self, show=False, save=True, colorscheme="bw"):
+    def plot_sfh_posterior(self, show=False, save=True, colorscheme="bw", logScale=False):
         return plotting.plot_sfh_posterior(self, show=show, save=save,
-                                           colorscheme=colorscheme)
+                                           colorscheme=colorscheme, logScale=logScale)
 
     def plot_spectrum_posterior(self, show=False, save=True):
         return plotting.plot_spectrum_posterior(self, show=show, save=save)

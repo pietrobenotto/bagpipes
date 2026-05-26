@@ -15,7 +15,8 @@ from scipy.ndimage import gaussian_filter
 
 from .. import utils
 
-tex_on = mpl.rcParams["text.usetex"]
+mpl.rcParams["text.usetex"] = True
+tex_on =  mpl.rcParams["text.usetex"]
 
 if not tex_on:
     print("Bagpipes: Latex turned off in rcParams, plots may look strange.")
@@ -282,7 +283,7 @@ def auto_axis_label(ax, y_scale, z_non_zero=True, log_x=False):
             ax.set_xlabel("lambda / A")
 
 
-def add_z_axis(ax, z_on_y=False, zvals=[0, 0.5, 1, 2, 4, 10]):
+def add_z_axis(ax, z_on_y=False, zvals=[0, 0.5, 1, 2, 4, 10],logScale=False):
 
     if z_on_y:
         ax2 = ax.twinx()
@@ -292,6 +293,9 @@ def add_z_axis(ax, z_on_y=False, zvals=[0, 0.5, 1, 2, 4, 10]):
 
     else:
         ax2 = ax.twiny()
+        if logScale:
+            ax2.set_xscale("log")
+            
         ax2.set_xticks(np.interp(zvals, utils.z_array, utils.age_at_z))
         ax2.set_xticklabels(["$" + str(z) + "$" for z in zvals])
         ax2.set_xlim(ax.get_xlim())

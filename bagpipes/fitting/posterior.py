@@ -168,7 +168,7 @@ class posterior(object):
                                          spec_units=self.galaxy.out_units,
                                          phot_units=self.galaxy.out_units)
 
-        all_names = ["photometry", "spectrum", "spectrum_full", "uvj",
+        all_names = ["photometry", "spectrum", "spectrum_full", "uvj", "Bmag",
                      "indices"]
 
         all_model_keys = dir(self.model_galaxy)
