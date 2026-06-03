@@ -366,7 +366,13 @@ class star_formation_history:
         sfr[mask] += fburst * dpl_form / sfr_burst_tot
 
     def continuity(self, sfr, param):
-        bin_edges = np.array(param["bin_edges"])[::-1]*10**6
+        # removed the inversion[::-1]. Now the first bin (loopback time = 0) ha always sfr =1
+        # the second has 10^dsfr[0]
+        # the third has 10^(dsfr[0] + dsfr[1])
+        # the older population has the sum of all the dsfr
+        # the total sfh is then rescaled to match the total mass
+
+        bin_edges = np.array(param["bin_edges"])*10**6
         n_bins = len(bin_edges) - 1
         dsfrs = [param["dsfr" + str(i)] for i in range(1, n_bins)]
 
