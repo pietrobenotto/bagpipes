@@ -377,7 +377,7 @@ class star_formation_history:
         dsfrs = [param["dsfr" + str(i)] for i in range(1, n_bins)]
 
         for i in range(1, n_bins+1):
-            mask = (self.ages < bin_edges[i-1]) & (self.ages > bin_edges[i])
+            mask = (self.ages > bin_edges[i-1]) & (self.ages < bin_edges[i])
             sfr[mask] += 10**np.sum(dsfrs[:i-1])
 
     def custom(self, sfr, param):
